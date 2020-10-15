@@ -1,4 +1,6 @@
 import analysis.calculus.deriv
+import data.polynomial.erase_lead
+import asymptotics2
 import algebra.group.pi
 
 namespace asymptotics
@@ -29,16 +31,16 @@ begin
   simp
 end
 
-lemma is_equivalent.refl : u ~[l] u :=
+@[refl] lemma is_equivalent.refl : u ~[l] u :=
 begin
   rw [is_equivalent, sub_self],
   exact is_o_zero _ _
 end
 
-lemma is_equivalent.symm (h : u ~[l] v) : v ~[l] u :=
+@[symm] lemma is_equivalent.symm (h : u ~[l] v) : v ~[l] u :=
 (h.is_o.trans_is_O h.is_O_symm).symm
 
-lemma is_equivalent.trans (huv : u ~[l] v) (hvw : v ~[l] w) : u ~[l] w :=
+@[trans] lemma is_equivalent.trans (huv : u ~[l] v) (hvw : v ~[l] w) : u ~[l] w :=
 begin
   rw is_equivalent,
   convert (huv.is_o.trans_is_O hvw.is_O).add hvw.is_o,
@@ -73,12 +75,76 @@ end normed_group
 
 section normed_field
 
-variables {α β : Type*} [normed_field β] {u v w : α → β} {l : filter α}
+variables {α β : Type*} [normed_field β] {t u v w : α → β} {l : filter α}
 
-lemma is_equivalent_iff_exists
+lemma is_equivalent_iff_exists_mul_eq : u ~[l] v ↔ 
+  ∃ (φ : α → β) (hφ : tendsto φ l (𝓝 1)), u =ᶠ[l] φ * v :=
+begin
+  rw [is_equivalent, is_o_iff_exists],
+  split; rintros ⟨φ, hφ, h⟩; [use (φ + 1), use (φ - 1)]; split,
+  { conv in (𝓝 _) { rw ← zero_add (1 : β) },
+    exact hφ.add (tendsto_const_nhds) },
+  { convert h.add (eventually_eq.refl l v); ext; simp [add_mul] },
+  { conv in (𝓝 _) { rw ← sub_self (1 : β) },
+    exact hφ.sub (tendsto_const_nhds) },
+  { convert h.sub (eventually_eq.refl l v); ext; simp [sub_mul] }
+end
+
+lemma is_equivalent.mul (htu : t ~[l] u) (hvw : v ~[l] w) : t * v ~[l] u * w :=
+begin
+  rw is_equivalent_iff_exists_mul_eq at *,
+  rcases htu with ⟨φ₁, hφ₁, h₁⟩,
+  rcases hvw with ⟨φ₂, hφ₂, h₂⟩,
+  rw ← one_mul (1 : β),
+  refine ⟨φ₁ * φ₂, hφ₁.mul hφ₂, _⟩,
+  convert h₁.mul h₂ using 1,
+  ext,
+  simp only [pi.mul_apply],
+  ac_refl
+end
+
+lemma is_equivalent.inv (huv : u ~[l] v) : (λ x, (u x)⁻¹) ~[l] (λ x, (v x)⁻¹) :=
+begin
+  rw is_equivalent_iff_exists_mul_eq at *,
+  rcases huv with ⟨φ, hφ, h⟩,
+  rw ← inv_one,
+  refine ⟨λ x, (φ x)⁻¹, tendsto.inv' (by norm_num) hφ, _⟩,
+  convert h.inv,
+  ext,
+  simp [mul_inv']
+end
+
+lemma is_equivalent.div (htu : t ~[l] u) (hvw : v ~[l] w) : 
+  (λ x, t x / v x) ~[l] (λ x, u x / w x) :=
+htu.mul hvw.inv
 
 end normed_field
 
 end asymptotics
+
+section polynomial
+
+open polynomial asymptotics filter
+
+variables {α : Type*} [normed_ring α] [ordered_ring α]
+
+lemma polynomial.eval_is_o_at_top_eval_of_degree_lt {P Q : polynomial α} (h : P.degree < Q.degree) :
+  is_o (λ x, eval x P) (λ x, eval x Q) at_top :=
+begin
+  sorry
+end
+
+lemma polynomial.eval_is_equivalent_at_top_eval_lead (P : polynomial α) : 
+  (λ x, eval x P) ~[at_top] (λ x, eval x ((C P.leading_coeff) * X ^ P.nat_degree)) :=
+begin
+  rw is_equivalent,
+  have : (λ x, eval x P) - (λ x, eval x ((C P.leading_coeff) * X ^ P.nat_degree)) = 
+    λ x, eval x P.erase_lead,
+  { simp_rw [← self_sub_C_mul_X_pow, eval_sub], refl },
+  rw this,
+  sorry
+end
+
+end polynomial
 
 #lint
