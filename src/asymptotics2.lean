@@ -1,5 +1,7 @@
 import analysis.calculus.deriv
 import algebra.group.pi
+import normed_linear_ordered_field
+import normed_linear_ordered_group
 
 namespace asymptotics
 
@@ -11,81 +13,39 @@ section normed_field
 
 variables {α β : Type*} [normed_field β] {u v w : α → β} {l : filter α} {c : ℝ}
 
-lemma is_O_with.eventually_mul_div_cancel (h : is_O_with c u v l) (hnneg : 0 ≤ c) :
-  ∀ᶠ x in l, (u x / v x) * v x = u x :=
-begin
-  rw is_O_with at h,
-  rw eventually_iff_exists_mem at *,
-  rcases h with ⟨s, hsl, hs⟩,
-  use [s, hsl],
-  intros y hy,
-  specialize hs y hy,
-  by_cases hvy : v y = 0,
-  { rw hvy at *,
-    rw [norm_zero, mul_zero] at hs,
-    have hs' := le_antisymm hs (norm_nonneg _),
-    rw norm_eq_zero at hs',
-    rw hs',
-    norm_num },
-  { rw div_mul_cancel _ hvy }
-end
+---
 
-lemma is_O.eventually_mul_div_cancel (h : is_O u v l) : ∀ᶠ x in l, (u x / v x) * v x = u x :=
-let ⟨c, hcnn, hc⟩ := h.exists_nonneg in hc.eventually_mul_div_cancel hcnn
-
-lemma is_o.eventually_mul_div_cancel (h : is_o u v l) : ∀ᶠ x in l, (u x / v x) * v x = u x :=
-((is_o_iff_forall_is_O_with.mp h) zero_lt_one).eventually_mul_div_cancel zero_le_one
-
-lemma is_O_with_of_eq_mul (φ : α → β) (hφ : ∀ᶠ x in l, ∥φ x∥ ≤ c) (h : u =ᶠ[l] φ * v) :
-  is_O_with c u v l :=
-begin
-  rw is_O_with,
-  apply h.symm.rw (λ x a, ∥a∥ ≤ c * ∥v x∥) (hφ.mp (eventually_of_forall $ λ x hx, _)),
-  simp only [normed_field.norm_mul, pi.mul_apply],
-  exact mul_le_mul_of_nonneg_right hx (norm_nonneg _)
-end
-
-lemma is_O_with_iff_exists (hc : 0 ≤ c) : 
-  is_O_with c u v l ↔ ∃ (φ : α → β) (hφ : ∀ᶠ x in l, ∥φ x∥ ≤ c), u =ᶠ[l] φ * v :=
-begin
-  split,
-  { intro h,
-    use (λ x, u x / v x),
-    split,
-    { rw is_O_with at h,
-      rw eventually_iff_exists_mem at *,
-      rcases h with ⟨s, hsl, hs⟩,
-      use [s, hsl],
-      intros y hy,
-      have := div_le_iff_of_nonneg_of_le (norm_nonneg _) hc (hs y hy),
-      simpa },
-    { exact eventually_eq.symm (h.eventually_mul_div_cancel hc) } },
-  { rintros ⟨φ, hφ, h⟩,
-    exact is_O_with_of_eq_mul φ hφ h }
-end
-
-lemma is_O_iff_exists :
-  is_O u v l ↔ ∃ (φ : α → β) (hφ : ∃ c, ∀ᶠ x in l, ∥φ x∥ ≤ c), u =ᶠ[l] φ * v :=
-begin
-  split,
-  { rintros h,
-    rcases h.exists_nonneg with ⟨c, hnnc, hc⟩,
-    rcases (is_O_with_iff_exists hnnc).mp hc with ⟨φ, hφ, huvφ⟩,
-    exact ⟨φ, ⟨c, hφ⟩, huvφ⟩ },
-  { exact λ ⟨φ, ⟨c, hφ⟩, huvφ⟩, is_O_iff_is_O_with.mpr ⟨c, is_O_with_of_eq_mul φ hφ huvφ⟩ }
-end
-
-lemma is_o_iff_exists :
-  is_o u v l ↔ ∃ (φ : α → β) (hφ : tendsto φ l (𝓝 0)), u =ᶠ[l] φ * v :=
-begin
-  split,
-  { exact λ h, ⟨λ x, u x / v x, h.tendsto_0, eventually_eq.symm h.eventually_mul_div_cancel⟩ },
-  { rw is_o,
-    rintros ⟨φ, hφ, huvφ⟩ c hpos,
-    simp_rw [metric.tendsto_nhds, dist_zero_right] at hφ,
-    exact is_O_with_of_eq_mul _ ((hφ c hpos).mp (eventually_of_forall $ λ x, le_of_lt)) huvφ }
-end
+/-- This needs refactoring !!! -/
+lemma is_o_iff_tendsto' (huv : ∀ᶠ x in l, u x = 0 → v x = 0) :
+  is_o u v l ↔ tendsto (λ x, u x / (v x)) l (𝓝 0) :=
+sorry
 
 end normed_field
+
+lemma is_o.tendsto_of_tendsto_const {α E 𝕜 : Type*} [normed_group E] [normed_field 𝕜] {u : α → E}
+  {v : α → 𝕜} {l : filter α} {y : 𝕜} (huv : is_o u v l) (hv : tendsto v l (𝓝 y)) : 
+  tendsto u l (𝓝 0) :=
+begin
+  suffices h : is_o u (λ x, (1 : 𝕜)) l,
+  { rwa is_o_one_iff at h },
+  exact huv.trans_is_O (is_O_one_of_tendsto 𝕜 hv),
+end
+
+section normed_linear_ordered_group
+
+variables {α β : Type*} [normed_linear_ordered_group β] {u v w : α → β} {l : filter α} {c : ℝ}
+
+lemma is_O.trans_tendsto_norm_at_top (huv : is_O u v l) 
+  (hu : tendsto (λ x, ∥u x∥) l at_top) :
+  tendsto (λ x, ∥v x∥) l at_top :=
+begin
+  rcases huv.exists_pos with ⟨c, hc, hcuv⟩,
+  rw is_O_with at hcuv,
+  convert tendsto_at_top_div hc (tendsto_at_top_mono' l hcuv hu),
+  ext x,
+  rw mul_div_cancel_left _ hc.ne.symm,
+end
+
+end normed_linear_ordered_group
 
 end asymptotics
