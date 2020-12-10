@@ -1,26 +1,12 @@
 import analysis.calculus.deriv
 import algebra.group.pi
-import normed_linear_ordered_field
-import normed_linear_ordered_group
+import analysis.normed_space.ordered
 
 namespace asymptotics
 
 open filter
 
 open_locale topological_space
-
-section normed_field
-
-variables {α β : Type*} [normed_field β] {u v w : α → β} {l : filter α} {c : ℝ}
-
----
-
-/-- This needs refactoring !!! -/
-lemma is_o_iff_tendsto' (huv : ∀ᶠ x in l, u x = 0 → v x = 0) :
-  is_o u v l ↔ tendsto (λ x, u x / (v x)) l (𝓝 0) :=
-sorry
-
-end normed_field
 
 lemma is_o.tendsto_of_tendsto_const {α E 𝕜 : Type*} [normed_group E] [normed_field 𝕜] {u : α → E}
   {v : α → 𝕜} {l : filter α} {y : 𝕜} (huv : is_o u v l) (hv : tendsto v l (𝓝 y)) : 
